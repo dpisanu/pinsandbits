@@ -70,23 +70,6 @@ Waveshare documents support for these development approaches:
 - Arduino IDE
 - MicroPython
 
-This repository entry currently documents the ESPHome setup using ESP-IDF.
-
-## Working ESPHome environment
-
-| Field | Value |
-|---|---|
-| ESPHome | `2026.4.3` |
-| ESP-IDF | `5.5.4` |
-| Python | `3.14.4` |
-| ESPHome board | `esp32-s3-devkitc-1` |
-| ESPHome variant | `esp32s3` |
-| ESPHome framework | `esp-idf` |
-| Flash mode | `dio` via `platformio_options.board_build.flash_mode` |
-| Upload method | ESPHome deployment via COM / serial |
-
-## Known-good ESPHome board block
-
 ## TODO
 
 - Add measured board dimensions.

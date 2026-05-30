@@ -33,6 +33,16 @@ This folder documents the ESPHome setup for the Waveshare ESP32-S3-Matrix board.
 - 8×8 RGB LED matrix via `esp32_rmt_led_strip`
 - LED test buttons
 
+## Configurations
+
+The following ESPHome configurations are available:
+
+| Version | File | Notes |
+|---|---|---|
+| Full | [esp32-s3-matrix_full.yaml](./configs/esp32-s3-matrix_full.yaml) | Full feature YAML with full blown Webserver side |
+| Axis | [esp32-s3-matrix_axis.yaml](./configs/esp32-s3-matrix_axis.yaml) | Configuration just showing the 6-Axis sensor |
+| LED | [esp32-s3-matrix_LED.yaml](./configs/esp32-s3-matrix_LED.yaml) | Configuration just showing some LED capabilities |
+
 ## Required secrets
 
 The config expects the following secrets to exist in ESPHome `secrets.yaml`:
@@ -142,7 +152,7 @@ light:
 
 ### Full Device Config config
 
-The current [esp32-s3-matrix_full.yaml](./esp32-s3-matrix_full.yaml) YAML uses `web_server` sorting groups to organize entities:
+The [esp32-s3-matrix_full.yaml](./esp32-s3-matrix_full.yaml) YAML uses `web_server` sorting groups to organize entities:
 
 - Device Type and System Information
 - Device System Statistics

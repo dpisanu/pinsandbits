@@ -8,14 +8,6 @@ The repository is organized around **devices first**, because the physical board
 * [ ] [.NET nanoFramework](https://nanoframework.net/)
 * [ ] [Zephyr](https://www.zephyrproject.org/)
 
-## Current devices
-
-| Device | MCU / Module | ESPHome | MicroPython | nanoFramework | Zephyr | Notes |
-|---|---|---:|---:|---:|---:|---|
-| [Waveshare ESP32-S3-Matrix](./devices/esp32-s3-matrix/) | ESP32-S3FH4R2 | ✅ | — | — | — | 8×8 RGB LED matrix, QMI8658 IMU |
-
-Legend: ✅ working, ⚠️ partial/experimental, ❌ not working, — not documented yet.
-
 ## Repository layout
 
 ```text
