@@ -1,0 +1,252 @@
+esphome:
+  name: esp32-c3-oled
+  friendly_name: "ESP32-C3 OLED 0.42 Display"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: esp32c3
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+  - platform: web_server
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Wi-Fi has a weak onboard antenna.
+  # This unit needs reduced output power to achieve and hold a stable connection.
+  output_power: 10dB
+  power_save_mode: none
+  fast_connect: true
+  reboot_timeout: 0s
+
+  # Enable fallback captive portal if connection drops.
+  ap:
+    ssid: !secret wifi_ap_ssid
+    password: !secret wifi_ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+  include_internal: true
+# For offline/local assets:
+#  local: true
+# For non-bench use, add auth:
+#  auth:
+#    username: !secret web_server_username
+#    password: !secret web_server_password
+
+debug:
+  update_interval: 10s
+
+# Optional onboard LED test.
+# The blue LED is on GPIO8 and is meant as a signal indicator.
+# This may lead to warnings about strapping pins during ESPHome compile.
+# If it behaves inverted, change inverted: true/false.
+output:
+  - platform: gpio
+    id: onboard_led_output
+    pin:
+      number: GPIO8
+      inverted: true
+
+light:
+  - platform: binary
+    id: onboard_led
+    name: "Onboard Blue LED"
+    output: onboard_led_output
+
+text:
+  - platform: template
+    id: oled_text
+    name: "OLED Text"
+    optimistic: true
+    restore_value: false
+    initial_value: "HELLO"
+    min_length: 0
+    max_length: 32
+    mode: text
+    on_value:
+      then:
+        - component.update: oled_display
+
+number:
+  - platform: template
+    id: oled_text_x
+    name: "OLED Text X"
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    min_value: 0
+    max_value: 71
+    step: 1
+    mode: slider
+    on_value:
+      then:
+        - component.update: oled_display
+
+  - platform: template
+    id: oled_text_y
+    name: "OLED Text Y"
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    min_value: 0
+    max_value: 39
+    step: 1
+    mode: slider
+    on_value:
+      then:
+        - component.update: oled_display
+
+select:
+  - platform: template
+    id: oled_font_size
+    name: "OLED Font Size"
+    optimistic: true
+    restore_value: true
+    options:
+      - "8"
+      - "12"
+      - "16"
+      - "20"
+    initial_option: "16"
+    on_value:
+      then:
+        - component.update: oled_display
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+    ssid:
+      name: "Connected SSID"
+    bssid:
+      name: "Connected BSSID"
+    mac_address:
+      name: "WiFi MAC Address"
+    dns_address:
+      name: "DNS Address"
+    power_save_mode:
+      name: "WiFi Power Save Mode"
+
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Reset Reason"
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 30s
+
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 30s
+
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    min_free:
+      name: "Heap Min Free"
+    fragmentation:
+      name: "Heap Fragmentation"
+    loop_time:
+      name: "Loop Time"
+    cpu_frequency:
+      name: "CPU Frequency"
+
+# OLED I2C bus.
+i2c:
+  sda: GPIO5
+  scl: GPIO6
+  scan: true
+  id: bus_a
+  frequency: 400kHz
+
+# There are mixed reports regarding this board and which OLED model is actually used.
+# Most documentation refers to SSD1306, but this unit works as SH1106 128x64.
+# Tested and not working on this unit: SSD1306 72x40 and SSD1306 128x64.
+# The physical visible window is about 72x40, while the controller memory layout behaves like 128x64.
+# The visible top-left begins around x=27, y=9.
+# The X and Y starting points need to be shifted manually in drawing coordinates.
+display:
+  - platform: ssd1306_i2c
+    id: oled_display
+    i2c_id: bus_a
+#    model: "SSD1306 72x40"
+#    model: "SSD1306 128x64"
+    model: "SH1106 128x64"
+    address: 0x3C
+    rotation: 0
+    update_interval: 1s
+    contrast: 100%
+    offset_y: 0
+    offset_x: 0
+    invert: true
+    lambda: |-
+      const int X0 = 27;
+      const int Y0 = 9;
+
+      std::string msg = id(oled_text).state;
+      if (msg.empty()) {
+        msg = " ";
+      }
+
+      int size = atoi(id(oled_font_size).current_option().c_str());
+      auto font = id(font_16);
+
+      switch (size) {
+        case 8:
+          font = id(font_8);
+          break;
+        case 12:
+          font = id(font_12);
+          break;
+        case 16:
+          font = id(font_16);
+          break;
+        case 20:
+          font = id(font_20);
+          break;
+        default:
+          font = id(font_16);
+          break;
+      }
+
+      int x = X0 + (int) id(oled_text_x).state;
+      int y = Y0 + (int) id(oled_text_y).state;
+      it.print(x, y, font, msg.c_str());
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_8
+    size: 8
+
+  - file: "gfonts://Roboto"
+    id: font_12
+    size: 12
+
+  - file: "gfonts://Roboto"
+    id: font_16
+    size: 16
+
+  - file: "gfonts://Roboto"
+    id: font_20
+    size: 20
