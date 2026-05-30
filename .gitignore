@@ -1,0 +1,40 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Secrets
+secrets.yaml
+*.secret.yaml
+.env
+.env.*
+!.env.example
+
+# ESPHome build output
+.esphome/
+**/.esphome/
+**/build/
+**/.pioenvs/
+**/.piolibdeps/
+**/firmware*.bin
+**/firmware*.elf
+**/firmware*.map
+**/firmware*.ota.bin
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+logs/
+
+# Temporary exports
+*.tmp
+*.bak
