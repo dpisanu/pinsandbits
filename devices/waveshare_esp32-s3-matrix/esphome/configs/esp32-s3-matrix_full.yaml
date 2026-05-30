@@ -1,0 +1,466 @@
+substitutions:
+  devicename: "esp32-s3-matrix"
+  friendly_name: "ESP32-S3 8x8 Matrix"
+  device_description: "Waveshare ESP32-S3 8x8 LED matrix with QMI8658 IMU"
+  xscrollpadding: "4" # in pix
+
+esphome:
+  name: ${devicename}
+  friendly_name: ${friendly_name}
+  comment: "${device_description}"
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_I2C_SKIP_LEGACY_CONFLICT_CHECK: y
+
+external_components:
+  # - source: components  # Use this for local developement
+  - source: github://Djelibeybi/esphome-qmi8658@main
+    components: [qmi8658]
+    refresh: 5s
+
+# Wi-Fi Configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback captive portal if connection drops
+  ap:
+    ssid: !secret wifi_ap_ssid
+    password: !secret wifi_ap_password
+
+captive_portal:
+
+# Integrated ESPHome web interface
+web_server:
+  port: 80
+  version: 3
+  include_internal: true
+  local: false
+  sorting_groups:
+    - id: group_device_info
+      name: "Device Type and System Information"
+      sorting_weight: 10
+
+    - id: group_system_stats
+      name: "Device System Statistics"
+      sorting_weight: 20
+
+    - id: group_network_info
+      name: "Device Network Information"
+      sorting_weight: 30
+
+    - id: group_sensory_data
+      name: "Device Sensory Data"
+      sorting_weight: 40
+
+    - id: group_device_control
+      name: "Device Control"
+      sorting_weight: 50
+
+    - id: group_led_control
+      name: "LED Control"
+      sorting_weight: 60
+
+logger:
+  level: WARN
+
+debug:
+  update_interval: 30s
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+  - platform: web_server
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+    icon: "mdi:restart"
+    web_server:
+      sorting_group_id: group_device_control
+      sorting_weight: 10
+
+  - platform: safe_mode
+    name: "Restart in Safe Mode"
+    entity_category: config
+    icon: "mdi:shield-refresh"
+    web_server:
+      sorting_group_id: group_device_control
+      sorting_weight: 20
+
+  - platform: template
+    name: "Matrix Off"
+    entity_category: config
+    icon: "mdi:led-off"
+    web_server:
+      sorting_group_id: group_led_control
+      sorting_weight: 20
+    on_press:
+      - light.turn_off: pixel_matrix
+
+  - platform: template
+    name: "Matrix Red Test"
+    entity_category: config
+    icon: "mdi:led-strip-variant"
+    web_server:
+      sorting_group_id: group_led_control
+      sorting_weight: 30
+    on_press:
+      - light.turn_on:
+          id: pixel_matrix
+          brightness: 40%
+          red: 100%
+          green: 0%
+          blue: 0%
+
+  - platform: template
+    name: "Matrix White Test"
+    entity_category: config
+    icon: "mdi:white-balance-sunny"
+    web_server:
+      sorting_group_id: group_led_control
+      sorting_weight: 40
+    on_press:
+      - light.turn_on:
+          id: pixel_matrix
+          brightness: 30%
+          red: 100%
+          green: 100%
+          blue: 100%
+
+  - platform: template
+    name: "Matrix RGB Sweep"
+    entity_category: config
+    icon: "mdi:palette"
+    web_server:
+      sorting_group_id: group_led_control
+      sorting_weight: 50
+    on_press:
+      - repeat:
+          count: 72
+          then:
+            - light.turn_on:
+                id: pixel_matrix
+                brightness: 5%
+                red: !lambda |-
+                  float h = fmodf(iteration * 5.0f, 360.0f);
+                  float c = 1.0f;
+                  float x = c * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+                  if (h < 60) return c;
+                  if (h < 120) return x;
+                  if (h < 180) return 0.0f;
+                  if (h < 240) return 0.0f;
+                  if (h < 300) return x;
+                  return c;
+                green: !lambda |-
+                  float h = fmodf(iteration * 5.0f, 360.0f);
+                  float c = 1.0f;
+                  float x = c * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+                  if (h < 60) return x;
+                  if (h < 120) return c;
+                  if (h < 180) return c;
+                  if (h < 240) return x;
+                  if (h < 300) return 0.0f;
+                  return 0.0f;
+                blue: !lambda |-
+                  float h = fmodf(iteration * 5.0f, 360.0f);
+                  float c = 1.0f;
+                  float x = c * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+                  if (h < 60) return 0.0f;
+                  if (h < 120) return 0.0f;
+                  if (h < 180) return x;
+                  if (h < 240) return c;
+                  if (h < 300) return c;
+                  return x;
+            - delay: 75ms
+
+# I2C setup for the onboard QMI8658 IMU
+i2c:
+  sda: GPIO11
+  scl: GPIO12
+  scan: true
+
+qmi8658:
+  id: imu_sensor
+  address: 0x6B
+  update_interval: 500ms
+  accel_range: 4G
+  gyro_range: 512DPS
+  accel_odr: 500HZ
+  gyro_odr: 500HZ
+  rotation: 0
+  invert_z: true
+  
+text_sensor:
+  - platform: version
+    name: "ESPHome Version"
+    entity_category: diagnostic
+    hide_timestamp: true
+    web_server:
+      sorting_group_id: group_device_info
+      sorting_weight: 10
+
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 30s
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: group_device_info
+      sorting_weight: 20
+      
+  - platform: qmi8658
+    qmi8658_id: imu_sensor
+    orientation:
+      name: "QMI8658 Orientation"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 20
+      
+  - platform: debug
+    device:
+      name: "Device Info"
+      entity_category: diagnostic
+      icon: "mdi:chip"
+      web_server:
+        sorting_group_id: group_device_info
+        sorting_weight: 30
+    reset_reason:
+      name: "Reset Reason"
+      entity_category: diagnostic
+      icon: "mdi:restart-alert"
+      web_server:
+        sorting_group_id: group_device_info
+        sorting_weight: 40
+
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 10
+
+    ssid:
+      name: "Connected SSID"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 20
+
+    bssid:
+      name: "Connected BSSID"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 30
+
+    mac_address:
+      name: "WiFi MAC Address"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 40
+
+    dns_address:
+      name: "DNS Address"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 50
+
+    power_save_mode:
+      name: "WiFi Power Save Mode"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 60
+
+    scan_results:
+      name: "Device Latest Scan Results"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_network_info
+        sorting_weight: 70
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 30s
+    entity_category: diagnostic
+    internal: true
+    web_server:
+      sorting_group_id: group_network_info
+      sorting_weight: 80
+
+  - platform: internal_temperature
+    name: "ESP32-S3 Internal Temperature"
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: group_sensory_data
+      sorting_weight: 10
+
+  - platform: uptime
+    name: "Uptime Seconds"
+    id: uptime_seconds
+    update_interval: 30s
+    entity_category: diagnostic
+    internal: true
+    web_server:
+      sorting_group_id: group_system_stats
+      sorting_weight: 10
+
+  - platform: debug
+    free:
+      name: "Heap Free"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_system_stats
+        sorting_weight: 20
+
+    block:
+      name: "Heap Max Block"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_system_stats
+        sorting_weight: 30
+
+    min_free:
+      name: "Heap Min Free"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_system_stats
+        sorting_weight: 40
+
+    fragmentation:
+      name: "Heap Fragmentation"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_system_stats
+        sorting_weight: 50
+
+    loop_time:
+      name: "Loop Time"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_system_stats
+        sorting_weight: 60
+
+    cpu_frequency:
+      name: "CPU Frequency"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_system_stats
+        sorting_weight: 80
+  
+  - platform: qmi8658
+    qmi8658_id: imu_sensor
+
+    accel_x:
+      name: "QMI8658 Acceleration X"
+      id: qmi_accel_x
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 30
+
+    accel_y:
+      name: "QMI8658 Acceleration Y"
+      id: qmi_accel_y
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 40
+
+    accel_z:
+      name: "QMI8658 Acceleration Z"
+      id: qmi_accel_z
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 50
+
+    gyro_x:
+      name: "QMI8658 Gyro X"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 60
+
+    gyro_y:
+      name: "QMI8658 Gyro Y"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 70
+
+    gyro_z:
+      name: "QMI8658 Gyro Z"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 80
+
+    temperature:
+      name: "QMI8658 Temperature"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 90
+
+    pitch:
+      name: "QMI8658 Pitch"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 100
+
+    roll:
+      name: "QMI8658 Roll"
+      entity_category: diagnostic
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 110
+
+binary_sensor:
+  - platform: qmi8658
+    qmi8658_id: imu_sensor
+    motion:
+      name: "QMI8658 Motion Detected"
+      entity_category: diagnostic
+      threshold: 0.5
+      filters:
+        - delayed_off: 1s
+      web_server:
+        sorting_group_id: group_sensory_data
+        sorting_weight: 120
+        
+light:
+  - platform: esp32_rmt_led_strip
+    name: "NeoPixel Light"
+    id: pixel_matrix
+    pin: GPIO14
+    num_leds: 64
+    chipset: ws2811
+    rgb_order: RGB
+    color_correct: [100%, 100%, 100%]
+    gamma_correct: 1.0
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
+    web_server:
+      sorting_group_id: group_led_control
+      sorting_weight: 10

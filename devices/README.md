@@ -20,3 +20,4 @@ Each device should have:
 
 | Device | Folder | Status |
 |---|---|---|
+| Waveshare ESP32-S3-Matrix | [`esp32-s3-matrix`](./waveshare_esp32-s3-matrix/README.md) | ESPHome working |

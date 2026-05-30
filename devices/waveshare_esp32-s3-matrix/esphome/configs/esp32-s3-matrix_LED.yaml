@@ -1,0 +1,81 @@
+esphome:
+  name: esp32-s3-matrix
+  friendly_name: "ESP32-S3 8x8 Matrix"
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+   framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_I2C_SKIP_LEGACY_CONFLICT_CHECK: y
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+  include_internal: true
+  local: false
+
+logger:
+  level: WARN
+
+debug:
+  update_interval: 30s
+
+button:
+  - platform: template
+    name: "Matrix Off"
+    entity_category: config
+    icon: "mdi:led-off"
+    on_press:
+      - light.turn_off: pixel_matrix
+
+  - platform: template
+    name: "Matrix Red Test"
+    entity_category: config
+    icon: "mdi:led-strip-variant"
+    on_press:
+      - light.turn_on:
+          id: pixel_matrix
+          brightness: 40%
+          red: 100%
+          green: 0%
+          blue: 0%
+
+  - platform: template
+    name: "Matrix White Test"
+    entity_category: config
+    icon: "mdi:white-balance-sunny"
+    on_press:
+      - light.turn_on:
+          id: pixel_matrix
+          brightness: 30%
+          red: 100%
+          green: 100%
+          blue: 100%
+
+i2c:
+  sda: GPIO11
+  scl: GPIO12
+  scan: true
+        
+light:
+  - platform: esp32_rmt_led_strip
+    name: "NeoPixel Light"
+    id: pixel_matrix
+    pin: GPIO14
+    num_leds: 64
+    chipset: ws2811
+    rgb_order: RGB
+    color_correct: [40%, 40%, 40%]
+    gamma_correct: 2.8
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
